@@ -2,6 +2,7 @@
   <Folder Name="/Bots/">
     <Project Path="Bots/Example.Bot/Example.Bot.csproj" />
     <Project Path="Bots/HDJO.Bot/HDJO.Bot.csproj" />
+    <Project Path="Bots/Luc.Bot/Luc.Bot.csproj" />
   </Folder>
   <Folder Name="/Game/">
     <Project Path="Game/TankDestroyer.csproj">
