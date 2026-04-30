@@ -2,7 +2,7 @@ using TankDestroyer.API;
 
 namespace Luc.Bot;
 
-[Bot("LucBot", "Luc Oostdijk", "F527A6")]
+[Bot("LucBot", "Luc Oostdijk", "FF8C00")]
 public class LucBot : IPlayerBot
 {
     private Random _random = new();
