@@ -143,7 +143,7 @@ class Program
                 ? [new LucBot(genome), opponent]
                 : [opponent, new LucBot(genome)];
 
-            var runner = new GameRunner(map, bots);
+            var runner = new GameRunner(map, bots) { RecordHistory = false };
             int turns  = 0;
             while (!runner.Finished && turns++ < MaxTurns)
                 runner.DoTurn();

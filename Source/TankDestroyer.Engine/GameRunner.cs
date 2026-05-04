@@ -9,6 +9,7 @@ public class GameRunner
 {
     private Game _game;
     public bool Finished { get; set; }
+    public bool RecordHistory { get; set; } = true;
 
     public GameRunner(World world, IPlayerBot[] playerBots)
     {
@@ -28,13 +29,7 @@ public class GameRunner
             return false;
         }
 
-        foreach (var bullet in _game.Bullets.ToArray())
-        {
-            if (bullet.Destroyed)
-            {
-                _game.Bullets.Remove(bullet);
-            }
-        }
+        _game.Bullets.RemoveAll(b => b.Destroyed);
 
         foreach (var tank in _game.Tanks)
         {
@@ -67,13 +62,16 @@ public class GameRunner
             ProcessBullet(bullet);
         }
 
-        GameTurn turn = new GameTurn();
-        turn.World = _game.World;
-        turn.Tanks = _game.Tanks.Select(c => c.Clone()).ToArray();
-        turn.Actions = turnActions.ToArray();
-        turn.Bullets = _game.Bullets.Select(c => c.Clone()).ToArray();
-        turn.Turn = _game.Turns.Last().Turn + 1;
-        _game.Turns.Add(turn);
+        if (RecordHistory)
+        {
+            GameTurn turn = new GameTurn();
+            turn.World = _game.World;
+            turn.Tanks = _game.Tanks.Select(c => c.Clone()).ToArray();
+            turn.Actions = turnActions.ToArray();
+            turn.Bullets = _game.Bullets.Select(c => c.Clone()).ToArray();
+            turn.Turn = _game.Turns.Last().Turn + 1;
+            _game.Turns.Add(turn);
+        }
 
         Finished = _game.Tanks.Length > 1 && _game.Tanks.Count(c => c.Destroyed == false) <= 1;
         return Finished;
