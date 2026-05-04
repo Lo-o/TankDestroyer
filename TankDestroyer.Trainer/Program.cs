@@ -13,12 +13,14 @@ class Program
     const float MutationStrength = 0.3f;
     const int   EliteCount       = 2;
     const int   MaxTurns         = 2000;
+    const int   MaxPoolSize      = 10;
 
     static readonly ThreadLocal<Random> Rng = new(() => new Random(Guid.NewGuid().GetHashCode()));
 
-    static World[]  _maps            = [];
-    static Genome?  _bestEver;
-    static float    _bestEverFitness = -1f;
+    static World[]       _maps            = [];
+    static Genome?       _bestEver;
+    static float         _bestEverFitness = -1f;
+    static List<Genome>  _pool            = [];
     static readonly string GenomePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "best_genome.json");
 
     static void Main()
@@ -41,8 +43,11 @@ class Program
 
         for (int gen = 1; gen <= Generations; gen++)
         {
+            // Snapshot pool once per generation so all parallel evals see the same opponents
+            var poolSnapshot = _pool.ToArray();
+
             var scores = new float[PopSize];
-            Parallel.For(0, PopSize, i => scores[i] = EvaluateFitness(population[i]));
+            Parallel.For(0, PopSize, i => scores[i] = EvaluateFitness(population[i], poolSnapshot));
 
             var ranked = population.Zip(scores, (g, s) => (g, s))
                                    .OrderByDescending(x => x.s)
@@ -55,10 +60,13 @@ class Program
             {
                 _bestEverFitness = best;
                 _bestEver        = ranked[0].g;
+                _pool.Add(ranked[0].g);
+                if (_pool.Count > MaxPoolSize) _pool.RemoveAt(0);
                 SaveBest();
             }
 
-            Console.WriteLine($"Gen {gen,4}/{Generations}  best={best:P1}  avg={avg:P1}  all-time={_bestEverFitness:P1}");
+            string opponent = poolSnapshot.Length == 0 ? "random" : $"pool ({poolSnapshot.Length})";
+            Console.WriteLine($"Gen {gen,4}/{Generations}  best={best:P1}  avg={avg:P1}  all-time={_bestEverFitness:P1}  vs {opponent}");
 
             var parents = ranked.Take(PopSize / 2).Select(x => x.g).ToArray();
             var next    = new Genome[PopSize];
@@ -77,7 +85,7 @@ class Program
         Console.WriteLine($"\nFinal best fitness: {_bestEverFitness:P1}");
     }
 
-    static float EvaluateFitness(Genome genome)
+    static float EvaluateFitness(Genome genome, Genome[] pool)
     {
         var rng  = Rng.Value!;
         int wins = 0;
@@ -85,9 +93,14 @@ class Program
         {
             var map       = _maps[rng.Next(_maps.Length)];
             int lucBotIdx = g % 2;
+
+            IPlayerBot opponent = pool.Length == 0
+                ? new ReferenceBot()
+                : new LucBot(pool[rng.Next(pool.Length)]);
+
             IPlayerBot[] bots = lucBotIdx == 0
-                ? [new LucBot(genome), new ReferenceBot()]
-                : [new ReferenceBot(), new LucBot(genome)];
+                ? [new LucBot(genome), opponent]
+                : [opponent, new LucBot(genome)];
 
             var runner = new GameRunner(map, bots);
             int turns  = 0;
