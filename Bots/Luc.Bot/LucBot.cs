@@ -1,20 +1,21 @@
 using TankDestroyer.API;
+using TankDestroyer.Engine;
 
 namespace Luc.Bot;
 
-[Bot("LucBot", "Luc Oostdijk", "FF8C00")]
+[Bot("Officer K", "Luc Oostdijk", "FF8C00")]
 public class LucBot : IPlayerBot
 {
-    private Random _random = new();
+    private readonly Genome _genome;
 
-    public void DoTurn(ITurnContext turnContext)
+    public LucBot()
     {
-        var enumValues = Enum.GetValues<TurretDirection>();
-        var enumDirectionValues = Enum.GetValues<Direction>();
-
-        turnContext.MoveTank(enumDirectionValues[_random.Next(0, enumDirectionValues.Length)]);
-        turnContext.RotateTurret(enumValues[_random.Next(0, enumValues.Length)]);
-
-        turnContext.Fire();
+        var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "best_genome.json");
+        _genome = Genome.TryLoad(path) ?? Genome.Default();
     }
+
+    // Used by the trainer to inject a genome directly without file I/O
+    public LucBot(Genome genome) => _genome = genome;
+
+    public void DoTurn(ITurnContext ctx) => HeuristicScorer.ExecuteBestAction((PlayerTurnContext)ctx, _genome);
 }

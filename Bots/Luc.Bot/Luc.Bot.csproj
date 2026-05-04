@@ -13,6 +13,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\Source\TankDestroyer.Engine\TankDestroyer.Engine.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
         <Reference Include="TankDestroyer.API">
             <HintPath>..\..\Build\TankDestroyer.API.dll</HintPath>
         </Reference>
