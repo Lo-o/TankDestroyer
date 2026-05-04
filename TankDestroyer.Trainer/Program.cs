@@ -23,6 +23,7 @@ class Program
     static float         _bestEverFitness = -1f;
     static List<Genome>  _pool            = [];
     static int           _stagnantGens    = 0;
+    static bool          _inMixedMode     = false;
     static readonly string GenomePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "best_genome.json");
 
     static void Main()
@@ -63,6 +64,15 @@ class Program
 
             float best = ranked[0].s;
             float avg  = ranked.Average(x => x.s);
+
+            // Reset the fitness baseline on first entry to mixed mode — random-only scores
+            // and mixed scores aren't on the same scale so the threshold must restart.
+            if (poolSnapshot.Length > 0 && !_inMixedMode)
+            {
+                _inMixedMode     = true;
+                _bestEverFitness = -1f;
+                _stagnantGens    = 0;
+            }
 
             if (best > _bestEverFitness)
             {
