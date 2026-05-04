@@ -14,6 +14,7 @@ class Program
     const int   EliteCount       = 2;
     const int   MaxTurns         = 2000;
     const int   MaxPoolSize      = 10;
+    const int   StagnationLimit  = 20;  // generations without improvement before restart
 
     static readonly ThreadLocal<Random> Rng = new(() => new Random(Guid.NewGuid().GetHashCode()));
 
@@ -21,6 +22,7 @@ class Program
     static Genome?       _bestEver;
     static float         _bestEverFitness = -1f;
     static List<Genome>  _pool            = [];
+    static int           _stagnantGens    = 0;
     static readonly string GenomePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "best_genome.json");
 
     static void Main()
@@ -35,11 +37,17 @@ class Program
         Console.WriteLine($"Maps: {string.Join(", ", _maps.Select(m => m.Name))}");
         Console.WriteLine($"Population={PopSize}  Generations={Generations}  Games/eval={GamesPerEval}");
         Console.WriteLine($"Saving to: {GenomePath}");
+
+        var seed = Genome.TryLoad(GenomePath);
+        Console.WriteLine(seed != null ? "Warm start: seeding from saved genome." : "Cold start: random population.");
         Console.WriteLine();
 
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; SaveBest(); Environment.Exit(0); };
 
-        var population = Enumerable.Range(0, PopSize).Select(_ => RandomGenome()).ToArray();
+        // Keep one elite copy of the seed; fill the rest with mutated variants (or random if no seed)
+        var population = Enumerable.Range(0, PopSize)
+            .Select(i => seed != null && i == 0 ? seed : seed != null ? Mutate(seed) : RandomGenome())
+            .ToArray();
 
         for (int gen = 1; gen <= Generations; gen++)
         {
@@ -62,23 +70,43 @@ class Program
                 _bestEver        = ranked[0].g;
                 _pool.Add(ranked[0].g);
                 if (_pool.Count > MaxPoolSize) _pool.RemoveAt(0);
+                _stagnantGens = 0;
                 SaveBest();
             }
+            else
+            {
+                _stagnantGens++;
+            }
 
-            string opponent = poolSnapshot.Length == 0 ? "random" : $"pool ({poolSnapshot.Length})";
-            Console.WriteLine($"Gen {gen,4}/{Generations}  best={best:P1}  avg={avg:P1}  all-time={_bestEverFitness:P1}  vs {opponent}");
+            string opponent = poolSnapshot.Length == 0 ? "random" : $"mixed (pool={poolSnapshot.Length})";
+            string stagnation = _stagnantGens > 0 ? $"  stagnant={_stagnantGens}/{StagnationLimit}" : "";
+            Console.WriteLine($"Gen {gen,4}/{Generations}  best={best:P1}  avg={avg:P1}  all-time={_bestEverFitness:P1}  vs {opponent}{stagnation}");
+
+            // Restart: keep elites + best-ever, replace rest with fresh randoms to restore diversity
+            if (_stagnantGens >= StagnationLimit)
+            {
+                Console.WriteLine($"  → stagnation limit reached, injecting fresh diversity");
+                _stagnantGens = 0;
+                var next = new Genome[PopSize];
+                next[0] = ranked[0].g;                                   // current best
+                if (_bestEver != null) next[1] = _bestEver;              // all-time best
+                else next[1] = Mutate(ranked[0].g);
+                for (int i = 2; i < PopSize; i++) next[i] = RandomGenome();
+                population = next;
+                continue;
+            }
 
             var parents = ranked.Take(PopSize / 2).Select(x => x.g).ToArray();
-            var next    = new Genome[PopSize];
+            var nextPop = new Genome[PopSize];
             for (int i = 0; i < EliteCount; i++)
-                next[i] = ranked[i].g;
+                nextPop[i] = ranked[i].g;
             for (int i = EliteCount; i < PopSize; i++)
             {
                 var p1 = parents[Rng.Value!.Next(parents.Length)];
                 var p2 = parents[Rng.Value!.Next(parents.Length)];
-                next[i] = Mutate(Crossover(p1, p2));
+                nextPop[i] = Mutate(Crossover(p1, p2));
             }
-            population = next;
+            population = nextPop;
         }
 
         SaveBest();
@@ -94,7 +122,10 @@ class Program
             var map       = _maps[rng.Next(_maps.Length)];
             int lucBotIdx = g % 2;
 
-            IPlayerBot opponent = pool.Length == 0
+            // First half of games vs random bot (stable baseline), second half vs pool (self-play pressure).
+            // When pool is empty all games are vs random. This prevents the cold-start collapse where
+            // a fresh random population scores near-zero against a pool genome that already beat random.
+            IPlayerBot opponent = (pool.Length == 0 || g < GamesPerEval / 2)
                 ? new ReferenceBot()
                 : new LucBot(pool[rng.Next(pool.Length)]);
 
