@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>TankDestroyer.Trainer</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OutputPath>..\Build</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ProjectReference to Luc.Bot brings Engine in transitively -->
+    <ProjectReference Include="..\Bots\Luc.Bot\Luc.Bot.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="TankDestroyer.API">
+      <HintPath>..\Build\TankDestroyer.API.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

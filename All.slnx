@@ -15,4 +15,5 @@
   </Folder>
   <Project Path="TankDestroyer.Game.Console/TankDestroyer.Game.Console.csproj" />
   <Project Path="TankDestroyer.Headless/TankDestroyer.Headless.csproj" />
+  <Project Path="TankDestroyer.Trainer/TankDestroyer.Trainer.csproj" />
 </Solution>
