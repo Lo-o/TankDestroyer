@@ -8,7 +8,7 @@ class Program
 {
     const int   PopSize          = 50;
     const int   Generations      = 200;
-    const int   GamesPerEval     = 30;
+    const int   GamesPerEval     = 60;
     const float MutationRate     = 0.15f;
     const float MutationStrength = 0.3f;
     const int   EliteCount       = 2;
